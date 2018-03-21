@@ -116,7 +116,20 @@ module.exports = {
 
       try {
         // The process can fail (failed to parse)
-        highlighted = Prism.highlight(block.body, languages[lang]);
+        var $ = cheerio.load("<pre><code>" + block.body + "</code></pre>");
+        var code = $('code')
+          , container = code.get(0);
+        container.className = "language-" + lang;
+        container.nodeName = 'code';
+        container.textContent = block.body;
+
+        // highlighted = Prism.highlight(block.body, languages[lang]);
+        Prism.highlightElement(container);
+        console.log("SUCCESS");
+        // highlighted = code.html();
+        highlighted = container.innerHTML;
+        //console.log(container);
+
       } catch (e) {
         console.warn('Failed to highlight:');
         console.warn(e);
@@ -137,6 +150,30 @@ module.exports = {
     init: function() {
 
       var book = this;
+
+      // Load Prism plugins
+      global.Prism = Prism;
+      global.self = global;
+      global.document = {
+        createElement: function (tag) {
+          console.log("GET",tag,cheerio (tag));
+          return cheerio (tag);
+        }
+      };
+      var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
+      jsFiles.forEach(function(jsFile) {
+        console.log('Loading Prism plugin', jsFile);
+        require(jsFile);
+      });
+      for (var i in Prism.hooks.all) {
+        console.log(i);
+        Prism.hooks.all[i] = function (env) {
+          var html = env.element.innerHTML;
+          var dom = cheerio.load(html).root().children().get();
+          env.element.children = dom;
+          Prism.hooks.all[i] (env);
+        };
+      }
 
       if (!isEbook(book)) {
         return;

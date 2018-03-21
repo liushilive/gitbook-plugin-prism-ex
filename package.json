@@ -25,6 +25,7 @@
     "prismjs": "1.6.0"
   },
   "devDependencies": {
+    "syntax-highlighting": "git+https://github.com/atelierbram/syntax-highlighting.git",
     "eslint": "3.11.1",
     "eslint-config-semistandard": "7.0.0",
     "eslint-config-standard": "6.2.1",
