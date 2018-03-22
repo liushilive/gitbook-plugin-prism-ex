@@ -2,8 +2,9 @@ var Prism = require('prismjs');
 var languages = require('prismjs').languages;
 var path = require('path');
 var fs = require('fs');
-var cheerio = require('cheerio');
 var mkdirp = require('mkdirp');
+const jsdom = require('jsdom');
+const { JSDOM } = jsdom;
 
 var DEFAULT_LANGUAGE = 'markup';
 var MAP_LANGUAGES = {
@@ -70,45 +71,6 @@ function getAssets() {
   };
 }
 
-function extendNode (e) {
-  e.setAttribute = function (a,v) {
-    this.attribs[a] = v;
-  };
-  e.hasAttribute = function (a) {
-    return this.attribs[a] != undefined;
-  };
-  e.appendChild = function (c) {
-    this.children.push(c);
-  };
-  e.querySelector = function (sel) { return false; };
-  Object.defineProperty(e, 'innerHTML', {
-    set: function(html) {
-      this.children = cheerio.parseHTML(html,null,true);
-    },
-    get: function() {
-      if (this.children.length) {
-        var ex = cheerio.load(this.children);
-        return ex.html();
-      }
-      return '';
-    }
-  });
-
-  if (e.className) {
-    e.attribs['class'] = e.className;
-    delete e.className;
-  }
-
-  Object.defineProperty(e, 'className', {
-    set: function(x) {
-      this.attribs['class'] = x;
-    },
-    get: function() {
-      return this.attribs['class'];
-    }
-  });
-}
-
 module.exports = {
   book: getAssets,
   ebook: function () {
@@ -154,20 +116,11 @@ module.exports = {
       }
 
       try {
-        // The process can fail (failed to parse)
-        var $ = cheerio.load("<pre><code>" + block.body + "</code></pre>");
-        var code = $('code')
-          , container = code.get(0);
-        container.className = "language-" + lang;
-        container.nodeName = 'code';
-        container.textContent = block.body;
-        extendNode(container);
-        extendNode(container.parentNode);
-
-        // highlighted = Prism.highlight(block.body, languages[lang]);
-        Prism.highlightElement(container);
-        highlighted = container.innerHTML;
-
+        var dom = JSDOM.fragment(`<pre class="line-numbers"><code class="language-${lang}"></code></pre>`);
+        var code = dom.querySelector('code');
+        code.textContent = block.body;
+        Prism.highlightElement(code);
+        highlighted = code.innerHTML;
       } catch (e) {
         console.warn('Failed to highlight:');
         console.warn(e);
@@ -175,7 +128,6 @@ module.exports = {
       }
 
       return highlighted;
-
     }
   },
   hooks: {
@@ -192,14 +144,7 @@ module.exports = {
       // Load Prism plugins
       global.Prism = Prism;
       global.self = global;
-      global.document = {
-        createElement: function (tag) {
-          tag = '<' + tag + '></' + tag + '>';
-          var e = cheerio(tag).get(0);
-          extendNode(e);
-          return e;
-        }
-      };
+      global.document = (new JSDOM().window.document);
       var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
       jsFiles.forEach(function (jsFile) {
         console.log('Loading Prism plugin', jsFile);
@@ -225,9 +170,9 @@ module.exports = {
     },
     page: function (page) {
 
-      var highlighted = false;
-
-      var $ = cheerio.load(page.content);
+      var fragment = JSDOM.fragment(page.content);
+      var $ = fragment.querySelectorAll.bind(fragment);
+      var changed = false;
 
       // Prism css styles target the <code> and <pre> blocks using
       // a substring CSS selector:
@@ -236,59 +181,65 @@ module.exports = {
       //
       // Adding "language-" to <pre> element should be sufficient to trigger
       // correct color theme.
-      var cssClasses = getConfig(this, 'pluginsConfig.prism.cssClasses')
-        , langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
-      if (langCaptions) {
-        var style = $('<style></style>');
-        style.html('\
-.markdown-section pre[lang]::before {\
-    content: attr(lang);\
-    position: absolute;\
-    display: block;\
-    color: #BBB;\
-    right: 0;\
-    top: 0;\
-    padding: 5px 10px;\
-    /*background: #4d4d60;*/\
-    /*background: rgba(0,0,0,0.01);*/\
-    background: rgba(255,255,255,0.2);\
-    font-weight: normal;\
-    font-size: 12px;\
-    border-bottom-left-radius: 7px;\
-    /*border: 1px solid #e8e8e8;*/\
-}\
-');
-        $.root().prepend(style);
-      }
 
-      $('pre').each(function () {
-        highlighted = true;
-        const $this = $(this);
-        $this.addClass('language-');
-        if (cssClasses)
-          $this.addClass(cssClasses);
-        if (langCaptions) {
-          var e = $this.find('code')
-            , match = e.attr('class').match(/lang-(\w+)/);
-          if (match && match[1])
-            $this.attr('lang', match[1].toUpperCase());
+      var cssClasses = getConfig(this, 'pluginsConfig.prism.cssClasses');
+      var langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
+      if (langCaptions) {
+        changed = true;
+        addLangCaption(fragment);
+      }
+      $('pre').forEach(function (node) {
+        changed = true;
+        var classes = node.className ? node.className.split(' ') : [];
+        classes.push('language-');
+        if (cssClasses) {
+          classes.push(cssClasses);
         }
-        // var src = $this.html ()
-        //   , found = false;
-        // src = src.replace(/(\n(?!$))/g, function (m) {
-        //   found = true;
-        //   return m + "<li>";
-        // });
-        // if (found)
-        //   src = "<li>" + src;
-        // e.html (src);
+        node.className = classes.join(' ');
+        if (langCaptions) {
+          var e = node.querySelector('code');
+          var match = e.getAttribute('class').match(/lang-(\w+)/);
+          if (match && match[1]) {
+            node.setAttribute('lang', match[1].toUpperCase());
+          }
+        }
       });
 
-      if (highlighted) {
-        page.content = $.html();
+      if (changed) {
+        page.content = toHTML(fragment);
       }
 
       return page;
     }
   }
 };
+
+function toHTML (fragment) {
+  var out = [];
+  for (var e of fragment.children) {
+    out.push(e.outerHTML);
+  }
+  return out.join('');
+}
+
+function addLangCaption (node) {
+  var style = document.createElement('style');
+  style.textContent = `
+.markdown-section pre[lang]::before {
+    content: attr(lang);
+    position: absolute;
+    display: block;
+    color: #BBB;
+    right: 0;
+    top: 0;
+    padding: 5px 10px;
+    font-weight: normal;
+    font-size: 12px;
+    border-bottom-left-radius: 7px;
+    background: rgba(0,0,0,0.01);
+}
+.markdown-section pre[lang].dark::before {
+    background: rgba(255,255,255,0.2);
+}`;
+  node.prepend(style);
+}
