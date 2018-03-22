@@ -57,7 +57,7 @@ function getAssets() {
     cssFiles.push('prismjs/themes/prism.css');
   }
 
-  cssFiles.forEach(function(cssFile) {
+  cssFiles.forEach(function (cssFile) {
     var cssPath = require.resolve(cssFile);
     cssFolder = path.dirname(cssPath);
     cssName = path.basename(cssPath);
@@ -70,9 +70,48 @@ function getAssets() {
   };
 }
 
+function extendNode (e) {
+  e.setAttribute = function (a,v) {
+    this.attribs[a] = v;
+  };
+  e.hasAttribute = function (a) {
+    return this.attribs[a] != undefined;
+  };
+  e.appendChild = function (c) {
+    this.children.push(c);
+  };
+  e.querySelector = function (sel) { return false; };
+  Object.defineProperty(e, 'innerHTML', {
+    set: function(html) {
+      this.children = cheerio.parseHTML(html,null,true);
+    },
+    get: function() {
+      if (this.children.length) {
+        var ex = cheerio.load(this.children);
+        return ex.html();
+      }
+      return '';
+    }
+  });
+
+  if (e.className) {
+    e.attribs['class'] = e.className;
+    delete e.className;
+  }
+
+  Object.defineProperty(e, 'className', {
+    set: function(x) {
+      this.attribs['class'] = x;
+    },
+    get: function() {
+      return this.attribs['class'];
+    }
+  });
+}
+
 module.exports = {
   book: getAssets,
-  ebook: function() {
+  ebook: function () {
 
     // Adding prism-ebook.css to the CSS collection forces Gitbook
     // reference to it in the html markup that is converted into a PDF.
@@ -82,7 +121,7 @@ module.exports = {
 
   },
   blocks: {
-    code: function(block) {
+    code: function (block) {
 
       var highlighted = '';
       var userDefined = getConfig(this, 'pluginsConfig.prism.lang', {});
@@ -122,13 +161,12 @@ module.exports = {
         container.className = "language-" + lang;
         container.nodeName = 'code';
         container.textContent = block.body;
+        extendNode(container);
+        extendNode(container.parentNode);
 
         // highlighted = Prism.highlight(block.body, languages[lang]);
         Prism.highlightElement(container);
-        console.log("SUCCESS");
-        // highlighted = code.html();
         highlighted = container.innerHTML;
-        //console.log(container);
 
       } catch (e) {
         console.warn('Failed to highlight:');
@@ -147,7 +185,7 @@ module.exports = {
     // ebook-prism.css lives outside the folder referenced by this plugin's config.
     //
     // @Inspiration https://github.com/GitbookIO/plugin-styles-less/blob/master/index.js#L8
-    init: function() {
+    init: function () {
 
       var book = this;
 
@@ -156,24 +194,17 @@ module.exports = {
       global.self = global;
       global.document = {
         createElement: function (tag) {
-          console.log("GET",tag,cheerio (tag));
-          return cheerio (tag);
+          tag = '<' + tag + '></' + tag + '>';
+          var e = cheerio(tag).get(0);
+          extendNode(e);
+          return e;
         }
       };
       var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
-      jsFiles.forEach(function(jsFile) {
+      jsFiles.forEach(function (jsFile) {
         console.log('Loading Prism plugin', jsFile);
         require(jsFile);
       });
-      for (var i in Prism.hooks.all) {
-        console.log(i);
-        Prism.hooks.all[i] = function (env) {
-          var html = env.element.innerHTML;
-          var dom = cheerio.load(html).root().children().get();
-          env.element.children = dom;
-          Prism.hooks.all[i] (env);
-        };
-      }
 
       if (!isEbook(book)) {
         return;
@@ -192,7 +223,7 @@ module.exports = {
       }
 
     },
-    page: function(page) {
+    page: function (page) {
 
       var highlighted = false;
 
@@ -205,10 +236,52 @@ module.exports = {
       //
       // Adding "language-" to <pre> element should be sufficient to trigger
       // correct color theme.
-      $('pre').each(function() {
+      var cssClasses = getConfig(this, 'pluginsConfig.prism.cssClasses')
+        , langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
+      if (langCaptions) {
+        var style = $('<style></style>');
+        style.html('\
+.markdown-section pre[lang]::before {\
+    content: attr(lang);\
+    position: absolute;\
+    display: block;\
+    color: #BBB;\
+    right: 0;\
+    top: 0;\
+    padding: 5px 10px;\
+    /*background: #4d4d60;*/\
+    /*background: rgba(0,0,0,0.01);*/\
+    background: rgba(255,255,255,0.2);\
+    font-weight: normal;\
+    font-size: 12px;\
+    border-bottom-left-radius: 7px;\
+    /*border: 1px solid #e8e8e8;*/\
+}\
+');
+        $.root().prepend(style);
+      }
+
+      $('pre').each(function () {
         highlighted = true;
         const $this = $(this);
         $this.addClass('language-');
+        if (cssClasses)
+          $this.addClass(cssClasses);
+        if (langCaptions) {
+          var e = $this.find('code')
+            , match = e.attr('class').match(/lang-(\w+)/);
+          if (match && match[1])
+            $this.attr('lang', match[1].toUpperCase());
+        }
+        // var src = $this.html ()
+        //   , found = false;
+        // src = src.replace(/(\n(?!$))/g, function (m) {
+        //   found = true;
+        //   return m + "<li>";
+        // });
+        // if (found)
+        //   src = "<li>" + src;
+        // e.html (src);
       });
 
       if (highlighted) {

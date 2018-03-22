@@ -2,7 +2,7 @@
   "name": "gitbook-plugin-prism-ext",
   "description": "Prism highlighting for GitBook with support for Prism plugins",
   "main": "index.js",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "scripts": {
     "lint": "eslint index.js test.js",
     "test": "npm run lint && tape test.js"
