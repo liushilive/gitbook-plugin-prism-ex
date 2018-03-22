@@ -1,7 +1,15 @@
-Gitbook Plugin for [Prism](http://prismjs.com/)
+GitBook plugin for [Prism](http://prismjs.com/) with support for Prism plugins
 ==============
 
-[![NPM](http://img.shields.io/npm/v/gitbook-plugin-prism.svg?style=flat-square&label=npm)](https://www.npmjs.com/package/gitbook-plugin-prism)
+[![NPM](http://img.shields.io/npm/v/gitbook-plugin-prism-ext.svg?style=flat-square&label=npm)](https://www.npmjs.com/package/gitbook-plugin-prism-ext)
+
+This plugin hilights the syntax of code blocks using the Prism highlighter.
+
+Rendering is performed at build time, NOT at runtime on the browser. This allows the plugin to also run when generating PDF books.
+
+Prism plugins are also supported but, as rendering is done at build time, plugins that generate interactive elements will not work properly; they will render (even for PDFs), but no interactivity is supported.
+
+> This plugin started from `gaearon/gitbook-plugin-prism`, which had no support for Prism plugins, and then improved it by providing a headless DOM emulation while rendering code blocks, which is required for supporting Prism plugins.  
 
 ##### Before
 <img src='http://i.imgur.com/cbk6O52.png'>
@@ -15,7 +23,7 @@ Add the plugin to your `book.json`, and disable default GitBook code highlightin
 
 ```json
 {
-  "plugins": ["prism", "-highlight"]
+  "plugins": ["prism-ext", "-highlight"]
 }
 ```
 
@@ -62,7 +70,61 @@ Due to other plugins using code block notion to denote other functionality, you 
 }
 ```
 
-### Prism Themes
+## Prism Plugins
+
+> **Note:** currently, you must also use the `custom-js-css` plugin to load the plugin's scripts and stylesheets. Soon, this plugin will support that feature natively.
+
+#### book.json example
+
+In this example, we're loading the `line-numbers` plugin and a custom theme from the `prism-ASH` plugin.
+
+```json
+{
+  "plugins": [ "-highlight", "prism-ext", "prism-ASH", "custom-js-css" ],
+
+    "pluginsConfig": {
+    "prism": {
+      "css": [
+        "syntax-highlighting/assets/css/prism/prism-tomorrow-night-bright.css"
+      ],
+      "plugins": [
+        "prismjs/plugins/line-numbers/prism-line-numbers.js"
+      ],
+      "cssClasses": "line-numbers",
+      "langCaptions": true
+    },
+    "custom-js-css": {
+      "js": [],
+      "css": [
+        "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.css"
+      ]
+    }
+  }
+}
+``` 
+
+##### Important rules
+
+1. `"custom-js-css"` must come **after** both the `"prism-ext"` and the theme plugin, otherwise CSS styles from the
+theme will override styles of the Prism plugins.
+2. Put the URL of each plugin's stylesheet on the `custom-js-css.css` array.
+3. Put the URL of each plugin's javascript on the `prism.plugins` array.
+4. Put the  URL of the Prism theme's stylesheet on the `prism.css` array (only one stylesheet, please).
+5. Set `prism.cssClasses` to a space delimited list of class names that should be appended to the class of each code block's `pre` element.
+
+> Some plugins require a specific class on that element to enable its functionality. You must specify that class on `prism.cssClasses`, as the Prism plugin is currently unable to do it automatically.<br>
+> For instance, on the example above, the`line-numbers` plugin requires the `line-numbers` class.
+
+#### The `langCaptions` pseudo-plugin
+
+The Prism plugin provides an additional feature that displays the language name of each code block on its upper right
+corner.
+
+Set `pluginsConfig.langCaptions` to `true` on `book.json` to enable it.
+
+Add the `dark` CSS class to `prism.cssClasses` if you're using a dark theme.
+
+## Prism Themes
 
 [https://github.com/PrismJS/prism](https://github.com/PrismJS/)
 
@@ -96,7 +158,7 @@ Due to other plugins using code block notion to denote other functionality, you 
 
 ## Credits
 
-Originally based on https://github.com/spricity/google_code_prettify.
+Originally based on [https://github.com/gaearon/gitbook-plugin-prism](), which was based on [https://github.com/spricity/google_code_prettify]().
 
 ## License
 
