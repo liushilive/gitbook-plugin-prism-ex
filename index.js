@@ -1,3 +1,4 @@
+/* eslint-disable no-multi-str */
 var Prism = require('prismjs');
 var languages = require('prismjs').languages;
 var path = require('path');
@@ -118,7 +119,7 @@ module.exports = {
       }
 
       try {
-        var dom = JSDOM.fragment(`<pre class="line-numbers"><code class="language-${lang}"></code></pre>`);
+        var dom = JSDOM.fragment('<pre><code class="language-' + lang + '"></code></pre>');
         var code = dom.querySelector('code');
         code.textContent = block.body;
         Prism.highlightElement(code);
@@ -188,9 +189,11 @@ module.exports = {
       var langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
       if (langCaptions) {
         changed = true;
-        addLangCaption(fragment);
+        addLangCaptionStyles(fragment);
       }
       $('pre').forEach(function (node) {
+        var code = node.querySelector('code');
+        if (!code) return;
         changed = true;
         var classes = node.className ? node.className.split(' ') : [];
         classes.push('language-');
@@ -198,11 +201,15 @@ module.exports = {
           classes.push(cssClasses);
         }
         node.className = classes.join(' ');
+        //
+        // Setup the PRE element for the lang-caption feature.
         if (langCaptions) {
-          var e = node.querySelector('code');
-          var match = e.getAttribute('class').match(/lang-(\w+)/);
-          if (match && match[1]) {
-            node.setAttribute('lang', match[1].toUpperCase());
+          var _class = code.getAttribute('class');
+          if (_class) {
+            var match = _class.match(/lang-(\w+)/);
+            if (match && match[1]) {
+              node.setAttribute('lang', match[1].toUpperCase());
+            }
           }
         }
       });
@@ -218,30 +225,31 @@ module.exports = {
 
 function toHTML (fragment) {
   var out = [];
-  for (var e of fragment.children) {
-    out.push(e.outerHTML);
+  var ch = fragment.children;
+  for (var i = 0, m = ch.length; i < m; ++i) {
+    out.push(ch.item(i).outerHTML);
   }
   return out.join('');
 }
 
-function addLangCaption (node) {
+function addLangCaptionStyles (node) {
   var style = document.createElement('style');
-  style.textContent = `
-.markdown-section pre[lang]::before {
-    content: attr(lang);
-    position: absolute;
-    display: block;
-    color: #BBB;
-    right: 0;
-    top: 0;
-    padding: 5px 10px;
-    font-weight: normal;
-    font-size: 12px;
-    border-bottom-left-radius: 7px;
-    background: rgba(0,0,0,0.01);
-}
-.markdown-section pre[lang].dark::before {
-    background: rgba(255,255,255,0.2);
-}`;
+  style.textContent = '\
+.markdown-section pre[lang]::before {\
+    content: attr(lang);\
+    position: absolute;\
+    display: block;\
+    color: #BBB;\
+    right: 0;\
+    top: 0;\
+    padding: 5px 10px;\
+    font-weight: normal;\
+    font-size: 12px;\
+    border-bottom-left-radius: 7px;\
+    background: rgba(0,0,0,0.01);\
+}\
+.markdown-section pre[lang].dark::before {\
+    background: rgba(255,255,255,0.2);\
+}';
   node.prepend(style);
 }
