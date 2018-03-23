@@ -20,7 +20,7 @@
     "url": "https://github.com/claudio-silva/gitbook-plugin-prism-ext/issues"
   },
   "dependencies": {
-    "jsdom": "^11.6.2",
+    "jsdom": "^9.12.0",
     "mkdirp": "0.5.1",
     "prismjs": "1.6.0"
   },

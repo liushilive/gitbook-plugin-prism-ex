@@ -5,7 +5,7 @@ var path = require('path');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
 const jsdom = require('jsdom');
-const JSDOM = jsdom.JSDOM;
+const JSDOM = jsdom.jsdom;
 
 var DEFAULT_LANGUAGE = 'markup';
 var MAP_LANGUAGES = {
@@ -16,6 +16,7 @@ var MAP_LANGUAGES = {
   'sh': 'bash',
   'html': 'markup'
 };
+var preClasses = '';
 
 // Base languages syntaxes (as of prism@1.6.0), extended by other syntaxes.
 // They need to be required before the others.
@@ -25,8 +26,6 @@ var PRELUDE = [
   'java', 'php'
 ];
 PRELUDE.map(requireSyntax);
-
-console.info('\nRunning on Node ' + process.version);
 
 /**
  * Load the syntax definition for a language id
@@ -119,8 +118,8 @@ module.exports = {
       }
 
       try {
-        var dom = JSDOM.fragment('<pre><code class="language-' + lang + '"></code></pre>');
-        var code = dom.querySelector('code');
+        var doc = JSDOM('<pre class="' + preClasses + '"><code class="language-' + lang + '"></code></pre>');
+        var code = doc.querySelector('code');
         code.textContent = block.body;
         Prism.highlightElement(code);
         highlighted = code.innerHTML;
@@ -147,10 +146,10 @@ module.exports = {
       // Load Prism plugins
       global.Prism = Prism;
       global.self = global;
-      global.document = (new JSDOM().window.document);
+      global.document = JSDOM();
       var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
       jsFiles.forEach(function (jsFile) {
-        console.log('Loading Prism plugin', jsFile);
+        console.log('Loading Prism plugin', '"' + path.basename(jsFile) + '"...');
         require(jsFile);
       });
 
@@ -173,8 +172,8 @@ module.exports = {
     },
     page: function (page) {
 
-      var fragment = JSDOM.fragment(page.content);
-      var $ = fragment.querySelectorAll.bind(fragment);
+      var doc = JSDOM(page.content);
+      var $ = doc.querySelectorAll.bind(doc);
       var changed = false;
 
       // Prism css styles target the <code> and <pre> blocks using
@@ -189,18 +188,20 @@ module.exports = {
       var langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
       if (langCaptions) {
         changed = true;
-        addLangCaptionStyles(fragment);
+        addLangCaptionStyles($('head')[0]);
       }
+
       $('pre').forEach(function (node) {
         var code = node.querySelector('code');
         if (!code) return;
         changed = true;
-        var classes = node.className ? node.className.split(' ') : [];
-        classes.push('language-');
+        preClasses = node.className ? node.className.split(' ') : [];
+        preClasses.push('language-');
         if (cssClasses) {
-          classes.push(cssClasses);
+          preClasses.push(cssClasses);
         }
-        node.className = classes.join(' ');
+        node.className = preClasses.join(' ');
+
         //
         // Setup the PRE element for the lang-caption feature.
         if (langCaptions) {
@@ -215,7 +216,7 @@ module.exports = {
       });
 
       if (changed) {
-        page.content = toHTML(fragment);
+        page.content = toHTML(doc);
       }
 
       return page;
@@ -251,5 +252,5 @@ function addLangCaptionStyles (node) {
 .markdown-section pre[lang].dark::before {\
     background: rgba(255,255,255,0.2);\
 }';
-  node.prepend(style);
+  node.appendChild(style);
 }
