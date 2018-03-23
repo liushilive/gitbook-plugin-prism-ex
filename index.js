@@ -4,7 +4,7 @@ var path = require('path');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
 const jsdom = require('jsdom');
-const { JSDOM } = jsdom;
+const JSDOM = jsdom.JSDOM;
 
 var DEFAULT_LANGUAGE = 'markup';
 var MAP_LANGUAGES = {
@@ -24,6 +24,8 @@ var PRELUDE = [
   'java', 'php'
 ];
 PRELUDE.map(requireSyntax);
+
+console.info('\nRunning on Node ' + process.version);
 
 /**
  * Load the syntax definition for a language id
