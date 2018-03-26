@@ -16,7 +16,7 @@ var MAP_LANGUAGES = {
   'sh': 'bash',
   'html': 'markup'
 };
-var preClasses = '';
+var blocks;
 
 // Base languages syntaxes (as of prism@1.6.0), extended by other syntaxes.
 // They need to be required before the others.
@@ -75,6 +75,7 @@ function getAssets() {
 
 module.exports = {
   book: getAssets,
+
   ebook: function () {
 
     // Adding prism-ebook.css to the CSS collection forces Gitbook
@@ -82,56 +83,8 @@ module.exports = {
     var assets = getAssets.call(this);
     assets.css.push('prism-ebook.css');
     return assets;
-
   },
-  blocks: {
-    code: function (block) {
 
-      var highlighted = '';
-      var userDefined = getConfig(this, 'pluginsConfig.prism.lang', {});
-      var userIgnored = getConfig(this, 'pluginsConfig.prism.ignore', []);
-
-      // Normalize language id
-      var lang = block.kwargs.language || DEFAULT_LANGUAGE;
-      lang = userDefined[lang] || MAP_LANGUAGES[lang] || lang;
-
-      // Check to see if the lang is ignored
-      if (userIgnored.indexOf(lang) > -1) {
-        return block.body;
-      }
-
-      // Try and find the language definition in components folder
-      if (!languages[lang]) {
-        try {
-          requireSyntax(lang);
-        } catch (e) {
-          console.warn('Failed to load prism syntax: ' + lang);
-          console.warn(e);
-        }
-      }
-
-      if (!languages[lang]) lang = DEFAULT_LANGUAGE;
-
-      // Check against html, prism "markup" works for this
-      if (lang === 'html') {
-        lang = 'markup';
-      }
-
-      try {
-        var doc = JSDOM('<pre class="' + preClasses + '"><code class="language-' + lang + '"></code></pre>');
-        var code = doc.querySelector('code');
-        code.textContent = block.body;
-        Prism.highlightElement(code);
-        highlighted = code.innerHTML;
-      } catch (e) {
-        console.warn('Failed to highlight:');
-        console.warn(e);
-        highlighted = block.body;
-      }
-
-      return highlighted;
-    }
-  },
   hooks: {
 
     // Manually copy prism-ebook.css into the temporary directory that Gitbook uses for inlining
@@ -149,7 +102,7 @@ module.exports = {
       global.document = JSDOM();
       var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
       jsFiles.forEach(function (jsFile) {
-        console.log('Loading Prism plugin', '"' + path.basename(jsFile) + '"...');
+        console.log('info: loading Prism plugin', '"' + path.basename(jsFile) + '"...');
         require(jsFile);
       });
 
@@ -170,9 +123,11 @@ module.exports = {
       }
 
     },
-    page: function (page) {
 
+    page: function (page) {
+      blocks = {};
       var doc = JSDOM(page.content);
+      var book = this.book;
       var $ = doc.querySelectorAll.bind(doc);
       var changed = false;
 
@@ -190,29 +145,20 @@ module.exports = {
         changed = true;
         addLangCaptionStyles($('head')[0]);
       }
-
-      $('pre').forEach(function (node) {
-        var code = node.querySelector('code');
+      $('pre').forEach(function (preElement, i) {
+        var code = preElement.querySelector('code');
         if (!code) return;
+        // From here on, only PRE > CODE blocks are processed.
         changed = true;
-        preClasses = node.className ? node.className.split(' ') : [];
-        preClasses.push('language-');
-        if (cssClasses) {
-          preClasses.push(cssClasses);
-        }
-        node.className = preClasses.join(' ');
+        if (cssClasses) preElement.className = preElement.className ? preElement.className + ' ' + cssClasses : cssClasses;
 
-        //
-        // Setup the PRE element for the lang-caption feature.
-        if (langCaptions) {
-          var _class = code.getAttribute('class');
-          if (_class) {
-            var match = _class.match(/lang-(\w+)/);
-            if (match && match[1]) {
-              node.setAttribute('lang', match[1].toUpperCase());
-            }
-          }
+        var _class = code.getAttribute('class');
+        if (_class) {
+          var match = _class.match(/lang-(\w+)/);
+          if (match && match[1]) preElement.setAttribute('lang', match[1]);
         }
+        //
+        highlight(code, book, 'CH' + i);
       });
 
       if (changed) {
@@ -221,8 +167,82 @@ module.exports = {
 
       return page;
     }
+  },
+
+  blocks: {
+    /**
+     * Processes `code` blocks. These match `<pre><code>` sections of the document.
+     * If the block has an ID embedded on the start of its content, use that ID to fectch a previously highlighted HTML
+     * block from the `blocks` dictionary.
+     * @param {{body:string,kwargs:Object,args:Array,blocks:Array}} block
+     * @returns {{body:string,kwargs:Object,args:Array,blocks:Array}}
+     */
+    code: function (block) {
+      var m = block.body.match(/^#(CH\d+)#$/);
+      if (m) block.body = blocks[m[1]];
+      else block.body = escapeString(block.body);
+      return block;
+    }
   }
+
 };
+
+/**
+ * Highlights a section of source code.
+ *
+ * Note: the DOM changes that are performed here will be later on discarded by GitBook, so we need to save them on
+ * the `blocks` dictionary and re-apply them later when the template engine is processing `code` blocks.
+ * @param {HTMLElement} codeElement
+ * @param {Object} book
+ * @param {string} id A code block ID used for saving this block and retrieving it later.
+ * @returns {boolean} True if the block was highlighted.
+ */
+function highlight (codeElement, book, id) {
+
+  var userDefined = getConfig(book, 'pluginsConfig.prism.lang', {});
+  var userIgnored = getConfig(book, 'pluginsConfig.prism.ignore', []);
+  var preElement = codeElement.parentElement;
+
+  // Normalize language id
+  var lang = preElement.getAttribute('lang') || DEFAULT_LANGUAGE;
+  lang = userDefined[lang] || MAP_LANGUAGES[lang] || lang;
+
+  // Check to see if the lang is ignored
+  if (userIgnored.indexOf(lang) > -1) {
+    return false;
+  }
+
+  // Try and find the language definition in components folder
+  if (!languages[lang]) {
+    try {
+      requireSyntax(lang);
+    } catch (e) {
+      console.warn('Failed to load prism syntax: ' + lang);
+      console.warn(e);
+    }
+  }
+
+  if (!languages[lang]) lang = DEFAULT_LANGUAGE;
+
+  // Check against html, prism "markup" works for this
+  if (lang === 'html') {
+    lang = 'markup';
+  }
+
+  try {
+    Prism.highlightElement(codeElement);
+  } catch (e) {
+    console.warn('Failed to highlight:');
+    console.warn(e);
+    return false;
+  }
+
+  // Save the highlighted block for later use.
+  blocks[id] = codeElement.innerHTML;
+  // Replace the block by an ID reference.
+  codeElement.textContent = '#' + id + '#';
+  return true;
+}
 
 function toHTML (fragment) {
   var out = [];
@@ -231,6 +251,30 @@ function toHTML (fragment) {
     out.push(ch.item(i).outerHTML);
   }
   return out.join('');
+}
+
+// Escaping regexes
+const AMP_REGEX = /&/g,
+      NBSP_REGEX = /\u00a0/g,
+      DOUBLE_QUOTE_REGEX = /"/g,
+      LT_REGEX = /</g,
+      GT_REGEX = />/g;
+
+// Escape string
+function escapeString(str, attrMode) {
+  str = str
+    .replace(AMP_REGEX, '&amp;')
+    .replace(NBSP_REGEX, '&nbsp;');
+
+  if (attrMode) str = str.replace(DOUBLE_QUOTE_REGEX, '&quot;');
+
+  else {
+    str = str
+      .replace(LT_REGEX, '&lt;')
+      .replace(GT_REGEX, '&gt;');
+  }
+
+  return str;
 }
 
 function addLangCaptionStyles (node) {
@@ -248,6 +292,7 @@ function addLangCaptionStyles (node) {
     font-size: 12px;\
     border-bottom-left-radius: 7px;\
     background: rgba(0,0,0,0.01);\
+    text-transform: uppercase\
 }\
 .markdown-section pre[lang].dark::before {\
     background: rgba(255,255,255,0.2);\

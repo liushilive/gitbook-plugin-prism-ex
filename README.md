@@ -9,7 +9,7 @@ Rendering is performed at build time, NOT at runtime on the browser. This allows
 
 Prism plugins are also supported but, as rendering is done at build time, plugins that generate interactive elements will not work properly; they will render (even for PDFs), but no interactivity is supported.
 
-> This plugin started from `gaearon/gitbook-plugin-prism`, which had no support for Prism plugins, and then improved it by providing a headless DOM emulation while rendering code blocks, which is required for supporting Prism plugins.  
+> **Technical note:** supporting Prism plugins on GitBook is not trivial, as they were designed for operation on the browser only, so a DOM representation of the document must be provided to them. This plugin provides such DOM trough an emulation that runs on NodeJS at build time, so that plugins operate as expected.  
 
 ##### Before
 <img src='http://i.imgur.com/cbk6O52.png'>
@@ -158,7 +158,7 @@ Add the `dark` CSS class to `prism.cssClasses` if you're using a dark theme.
 
 ## Credits
 
-Originally based on [https://github.com/gaearon/gitbook-plugin-prism](), which was based on [https://github.com/spricity/google_code_prettify]().
+Based on [gaearon/gitbook-plugin-prism](https://github.com/gaearon/gitbook-plugin-prism), which was based on [google_code_prettify](https://github.com/spricity/google_code_prettify).
 
 ## License
 
