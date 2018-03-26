@@ -7,14 +7,42 @@ var mkdirp = require('mkdirp');
 const jsdom = require('jsdom');
 const JSDOM = jsdom.jsdom;
 
-var DEFAULT_LANGUAGE = 'markup';
-var MAP_LANGUAGES = {
+const DEFAULT_LANGUAGE = 'markup';
+const MAP_LANGUAGES = {
   'py': 'python',
   'js': 'javascript',
   'rb': 'ruby',
   'cs': 'csharp',
   'sh': 'bash',
   'html': 'markup'
+};
+const PLUGIN_ASSETS = {
+  'autolinker': ['prism-autolinker.css', 'prism-autolinker.min.js'],
+  'autoloader': ['prism-autoloader.min.js'],
+  'command-line': ['prism-command-line.css', 'prism-command-line.min.js'],
+  'copy-to-clipboard': ['prism-copy-to-clipboard.min.js'],
+  'custom-class': ['prism-custom-class.min.js'],
+  'data-uri-highlight': ['prism-data-uri-highlight.min.js'],
+  'file-highlight': ['prism-file-highlight.min.js'],
+  'highlight-keywords': ['prism-highlight-keywords.min.js'],
+  'ie8': ['prism-ie8.css', 'prism-ie8.min.js'],
+  'jsonp-highlight': ['prism-jsonp-highlight.min.js'],
+  'keep-markup': ['prism-keep-markup.min.js'],
+  'line-highlight': ['prism-line-highlight.css', 'prism-line-highlight.min.js'],
+  'line-numbers': ['prism-line-numbers.css', 'prism-line-numbers.min.js'],
+  'normalize-whitespace': ['prism-normalize-whitespace.min.js'],
+  'previewer-angle': ['prism-previewer-angle.css', 'prism-previewer-angle.min.js'],
+  'previewer-base': ['prism-previewer-base.css', 'prism-previewer-base.min.js'],
+  'previewer-color': ['prism-previewer-color.css', 'prism-previewer-color.min.js'],
+  'previewer-easing': ['prism-previewer-easing.css', 'prism-previewer-easing.min.js'],
+  'previewer-gradient': ['prism-previewer-gradient.css', 'prism-previewer-gradient.min.js'],
+  'previewer-time': ['prism-previewer-time.css', 'prism-previewer-time.min.js'],
+  'remove-initial-line-feed': ['prism-remove-initial-line-feed.min.js'],
+  'show-invisibles': ['prism-show-invisibles.css', 'prism-show-invisibles.min.js'],
+  'show-language': ['prism-show-language.min.js'],
+  'toolbar': ['prism-toolbar.css', 'prism-toolbar.min.js'],
+  'unescaped-markup': ['prism-unescaped-markup.css', 'prism-unescaped-markup.min.js'],
+  'wpd': ['prism-wpd.css', 'prism-wpd.min.js']
 };
 var blocks;
 
@@ -100,10 +128,39 @@ module.exports = {
       global.Prism = Prism;
       global.self = global;
       global.document = JSDOM();
-      var jsFiles = getConfig(book, 'pluginsConfig.prism.plugins', []);
-      jsFiles.forEach(function (jsFile) {
-        console.log('info: loading Prism plugin', '"' + path.basename(jsFile) + '"...');
-        require(jsFile);
+      var plugins = getConfig(book, 'pluginsConfig.prism.plugins', []);
+      plugins.forEach(function (plugin) {
+        // Custom plugin
+        var files;
+        if (typeof plugin === 'string') {
+          files = PLUGIN_ASSETS[plugin];
+          if (files === undefined) {
+            console.error('error: plugin "' + plugin + '" not found');
+            return;
+          }
+        } else if (typeof plugin === 'object' && plugin.length) { // check if it's an array
+          files = plugin;
+          plugin = path.basename(files[0]);
+        } else {
+          console.error('error: invalid  "pluginsConfig.prism.plugins" setting');
+          return;
+        }
+
+        console.log('info: loading Prism plugin', '"' + plugin + '"...');
+        for (var i = 0; i < files.length; ++i) {
+          /** @type {string} */
+          var file = files[i];
+          if (file.match(/.js$/i))
+            require(file);
+          else if (file.match(/.css$/i)) {
+
+          }
+          else {
+            console.error('error: invalid  file type "pluginsConfig.prism.plugins" setting');
+            return;
+          }
+        }
+
       });
 
       if (!isEbook(book)) {
@@ -255,10 +312,10 @@ function toHTML (fragment) {
 
 // Escaping regexes
 const AMP_REGEX = /&/g,
-      NBSP_REGEX = /\u00a0/g,
-      DOUBLE_QUOTE_REGEX = /"/g,
-      LT_REGEX = /</g,
-      GT_REGEX = />/g;
+  NBSP_REGEX = /\u00a0/g,
+  DOUBLE_QUOTE_REGEX = /"/g,
+  LT_REGEX = /</g,
+  GT_REGEX = />/g;
 
 // Escape string
 function escapeString(str, attrMode) {
