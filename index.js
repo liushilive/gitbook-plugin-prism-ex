@@ -17,34 +17,35 @@ const MAP_LANGUAGES = {
   'html': 'markup'
 };
 const PLUGIN_ASSETS = {
-  'autolinker': ['prism-autolinker.css', 'prism-autolinker.min.js'],
-  'autoloader': ['prism-autoloader.min.js'],
-  'command-line': ['prism-command-line.css', 'prism-command-line.min.js'],
-  'copy-to-clipboard': ['prism-copy-to-clipboard.min.js'],
-  'custom-class': ['prism-custom-class.min.js'],
-  'data-uri-highlight': ['prism-data-uri-highlight.min.js'],
-  'file-highlight': ['prism-file-highlight.min.js'],
-  'highlight-keywords': ['prism-highlight-keywords.min.js'],
-  'ie8': ['prism-ie8.css', 'prism-ie8.min.js'],
-  'jsonp-highlight': ['prism-jsonp-highlight.min.js'],
-  'keep-markup': ['prism-keep-markup.min.js'],
-  'line-highlight': ['prism-line-highlight.css', 'prism-line-highlight.min.js'],
-  'line-numbers': ['prism-line-numbers.css', 'prism-line-numbers.min.js'],
-  'normalize-whitespace': ['prism-normalize-whitespace.min.js'],
-  'previewer-angle': ['prism-previewer-angle.css', 'prism-previewer-angle.min.js'],
-  'previewer-base': ['prism-previewer-base.css', 'prism-previewer-base.min.js'],
-  'previewer-color': ['prism-previewer-color.css', 'prism-previewer-color.min.js'],
-  'previewer-easing': ['prism-previewer-easing.css', 'prism-previewer-easing.min.js'],
-  'previewer-gradient': ['prism-previewer-gradient.css', 'prism-previewer-gradient.min.js'],
-  'previewer-time': ['prism-previewer-time.css', 'prism-previewer-time.min.js'],
+  'autolinker':               ['prism-autolinker.css', 'prism-autolinker.min.js'],
+  'autoloader':               ['prism-autoloader.min.js'],
+  'command-line':             ['prism-command-line.css', 'prism-command-line.min.js'],
+  'copy-to-clipboard':        ['prism-copy-to-clipboard.min.js'],
+  'custom-class':             ['prism-custom-class.min.js'],
+  'data-uri-highlight':       ['prism-data-uri-highlight.min.js'],
+  'file-highlight':           ['prism-file-highlight.min.js'],
+  'highlight-keywords':       ['prism-highlight-keywords.min.js'],
+  'ie8':                      ['prism-ie8.css', 'prism-ie8.min.js'],
+  'jsonp-highlight':          ['prism-jsonp-highlight.min.js'],
+  'keep-markup':              ['prism-keep-markup.min.js'],
+  'line-highlight':           ['prism-line-highlight.css', 'prism-line-highlight.min.js'],
+  'line-numbers':             ['prism-line-numbers.css', 'prism-line-numbers.min.js'],
+  'normalize-whitespace':     ['prism-normalize-whitespace.min.js'],
+  'previewer-angle':          ['prism-previewer-angle.css', 'prism-previewer-angle.min.js'],
+  'previewer-base':           ['prism-previewer-base.css', 'prism-previewer-base.min.js'],
+  'previewer-color':          ['prism-previewer-color.css', 'prism-previewer-color.min.js'],
+  'previewer-easing':         ['prism-previewer-easing.css', 'prism-previewer-easing.min.js'],
+  'previewer-gradient':       ['prism-previewer-gradient.css', 'prism-previewer-gradient.min.js'],
+  'previewer-time':           ['prism-previewer-time.css', 'prism-previewer-time.min.js'],
   'remove-initial-line-feed': ['prism-remove-initial-line-feed.min.js'],
-  'show-invisibles': ['prism-show-invisibles.css', 'prism-show-invisibles.min.js'],
-  'show-language': ['prism-show-language.min.js'],
-  'toolbar': ['prism-toolbar.css', 'prism-toolbar.min.js'],
-  'unescaped-markup': ['prism-unescaped-markup.css', 'prism-unescaped-markup.min.js'],
-  'wpd': ['prism-wpd.css', 'prism-wpd.min.js']
+  'show-invisibles':          ['prism-show-invisibles.css', 'prism-show-invisibles.min.js'],
+  'show-language':            ['prism-show-language.min.js'],
+  'toolbar':                  ['prism-toolbar.css', 'prism-toolbar.min.js'],
+  'unescaped-markup':         ['prism-unescaped-markup.css', 'prism-unescaped-markup.min.js'],
+  'wpd':                      ['prism-wpd.css', 'prism-wpd.min.js']
 };
 var blocks;
+var assets;
 
 // Base languages syntaxes (as of prism@1.6.0), extended by other syntaxes.
 // They need to be required before the others.
@@ -54,6 +55,22 @@ var PRELUDE = [
   'java', 'php'
 ];
 PRELUDE.map(requireSyntax);
+
+function error() {
+  var args = ['error:'].concat(Array.prototype.slice.call(arguments));
+  console.error.apply(this, args);
+  process.exit(1);
+}
+
+function warn() {
+  var args = ['warn:'].concat(Array.prototype.slice.call(arguments));
+  console.warn.apply(this, args);
+}
+
+function info() {
+  var args = ['info:'].concat(Array.prototype.slice.call(arguments));
+  console.info.apply(this, args);
+}
 
 /**
  * Load the syntax definition for a language id
@@ -68,36 +85,33 @@ function getConfig(context, property, defaultValue) {
 }
 
 function isEbook(book) {
+  // 3.x
+  if (book.output && book.output.name) {
+    return book.output.name === 'ebook';
+  }
+
   // 2.x
   if (book.options && book.options.generator) {
     return book.options.generator === 'ebook';
   }
 
-  // 3.x
-  return book.output.name === 'ebook';
+  return false;
 }
 
 function getAssets() {
+  var book = this;
+  var cssFiles;
+  var theme = getConfig(book, 'pluginsConfig.prism.theme');
+  if (theme) cssFiles = [theme];
+  else cssFiles = ['prismjs/themes/prism.css'];
 
-  var cssFiles = getConfig(this, 'pluginsConfig.prism.css', []);
-  var cssFolder = null;
-  var cssNames = [];
-  var cssName = null;
-
-  if (cssFiles.length === 0) {
-    cssFiles.push('prismjs/themes/prism.css');
-  }
-
-  cssFiles.forEach(function (cssFile) {
-    var cssPath = require.resolve(cssFile);
-    cssFolder = path.dirname(cssPath);
-    cssName = path.basename(cssPath);
-    cssNames.push(cssName);
+  cssFiles.reverse().forEach(function (cssFile) {
+    publishAssetFile(cssFile, book, true);
   });
 
   return {
-    assets: cssFolder,
-    css: cssNames
+    assets: getAssetsPath(this),
+    css: assets
   };
 }
 
@@ -121,8 +135,8 @@ module.exports = {
     //
     // @Inspiration https://github.com/GitbookIO/plugin-styles-less/blob/master/index.js#L8
     init: function () {
-
       var book = this;
+      assets = [];
 
       // Load Prism plugins
       global.Prism = Prism;
@@ -133,30 +147,31 @@ module.exports = {
         // Custom plugin
         var files;
         if (typeof plugin === 'string') {
-          files = PLUGIN_ASSETS[plugin];
+          files = PLUGIN_ASSETS[plugin].map (function (file) {
+            return 'prismjs/plugins/' + plugin + '/' + file;
+          });
           if (files === undefined) {
-            console.error('error: plugin "' + plugin + '" not found');
+            warn('plugin "' + plugin + '" not found');
             return;
           }
         } else if (typeof plugin === 'object' && plugin.length) { // check if it's an array
           files = plugin;
           plugin = path.basename(files[0]);
         } else {
-          console.error('error: invalid  "pluginsConfig.prism.plugins" setting');
+          warn('invalid  "pluginsConfig.prism.plugins" setting');
           return;
         }
 
-        console.log('info: loading Prism plugin', '"' + plugin + '"...');
+        info('loading Prism plugin', '"' + plugin + '"...');
         for (var i = 0; i < files.length; ++i) {
           /** @type {string} */
           var file = files[i];
-          if (file.match(/.js$/i))
-            require(file);
-          else if (file.match(/.css$/i)) {
-
-          }
-          else {
-            console.error('error: invalid  file type "pluginsConfig.prism.plugins" setting');
+          if (file.match(/.js$/i)) {
+            loadPlugin(file, book);
+          } else if (file.match(/.css$/i)) {
+            publishAssetFile(file, book);
+          } else {
+            warn('invalid file type (' + file + ') on "pluginsConfig.prism.plugins" setting');
             return;
           }
         }
@@ -167,24 +182,15 @@ module.exports = {
         return;
       }
 
-      var outputDirectory = path.join(book.output.root(), '/gitbook/gitbook-plugin-prism');
-      var outputFile = path.resolve(outputDirectory, 'prism-ebook.css');
-      var inputFile = path.resolve(__dirname, './prism-ebook.css');
-      mkdirp.sync(outputDirectory);
+      // Publish assets for PDF rendering.
 
-      try {
-        fs.writeFileSync(outputFile, fs.readFileSync(inputFile));
-      } catch (e) {
-        console.warn('Failed to write prism-ebook.css. See https://git.io/v1LHY for side effects.');
-        console.warn(e);
-      }
-
+      publishAssetFile(path.resolve(__dirname, './prism-ebook.css'), book);
     },
 
     page: function (page) {
       blocks = {};
       var doc = JSDOM(page.content);
-      var book = this.book;
+      var book = this;
       var $ = doc.querySelectorAll.bind(doc);
       var changed = false;
 
@@ -197,11 +203,6 @@ module.exports = {
       // correct color theme.
 
       var cssClasses = getConfig(this, 'pluginsConfig.prism.cssClasses');
-      var langCaptions = getConfig(this, 'pluginsConfig.prism.langCaptions');
-      if (langCaptions) {
-        changed = true;
-        addLangCaptionStyles($('head')[0]);
-      }
       $('pre').forEach(function (preElement, i) {
         var code = preElement.querySelector('code');
         if (!code) return;
@@ -274,8 +275,8 @@ function highlight (codeElement, book, id) {
     try {
       requireSyntax(lang);
     } catch (e) {
-      console.warn('Failed to load prism syntax: ' + lang);
-      console.warn(e);
+      warn('Failed to load Prism syntax: ' + lang);
+      warn(e);
     }
   }
 
@@ -289,8 +290,8 @@ function highlight (codeElement, book, id) {
   try {
     Prism.highlightElement(codeElement);
   } catch (e) {
-    console.warn('Failed to highlight:');
-    console.warn(e);
+    warn('Failed to highlight:');
+    warn(e);
     return false;
   }
 
@@ -334,25 +335,63 @@ function escapeString(str, attrMode) {
   return str;
 }
 
-function addLangCaptionStyles (node) {
-  var style = document.createElement('style');
-  style.textContent = '\
-.markdown-section pre[lang]::before {\
-    content: attr(lang);\
-    position: absolute;\
-    display: block;\
-    color: #BBB;\
-    right: 0;\
-    top: 0;\
-    padding: 5px 10px;\
-    font-weight: normal;\
-    font-size: 12px;\
-    border-bottom-left-radius: 7px;\
-    background: rgba(0,0,0,0.01);\
-    text-transform: uppercase\
-}\
-.markdown-section pre[lang].dark::before {\
-    background: rgba(255,255,255,0.2);\
-}';
-  node.appendChild(style);
+function getAssetsPath (book) {
+  return path.join(book.output.root(), '/gitbook/gitbook-plugin-prism');
+}
+
+/**
+ * Copies a file to the plugin's assets folder.
+ * @param {string} srcPath
+ * @param {Object} book
+ * @param {boolean} [prepend]=false True to register the file before the files that are already published.
+ * @returns {boolean} True if the file was successfully copied.
+ */
+function publishAssetFile (srcPath, book, prepend) {
+  var outputDirectory = getAssetsPath(book);
+  mkdirp.sync(outputDirectory);
+
+  var fileName = path.basename(srcPath);
+  var outputFile = path.resolve(outputDirectory, fileName);
+
+  try {
+    srcPath = require.resolve(srcPath);
+  } catch (e) {
+    if (e.code === 'MODULE_NOT_FOUND') {
+      var altPath = book.resolve(srcPath);
+      if (fs.existsSync(altPath)) return publishAssetFile(altPath, book, prepend);
+    }
+    warn('Can\'t find file "' + srcPath + '"');
+    return false;
+  }
+
+  try {
+    fs.writeFileSync(outputFile, fs.readFileSync(srcPath));
+  } catch (e) {
+    warn('Failed to publish ' + fileName);
+    warn(e);
+    return false;
+  }
+  if (prepend) assets.unshift(path.basename(outputFile));
+  else assets.push(path.basename(outputFile));
+  return true;
+}
+
+/**
+ * Loads a Prism plugin's javascript file.
+ * @param {string} srcPath Path to the .js file.
+ * @param {Object} book
+ * @returns {boolean} True if the file was successfully loaded.
+ */
+function loadPlugin (srcPath, book) {
+  try {
+    require(srcPath);
+  } catch (e) {
+    if (e.code === 'MODULE_NOT_FOUND') {
+      var altPath = book.resolve(srcPath);
+      if (fs.existsSync(altPath)) return loadPlugin(altPath, book);
+    }
+    warn('Can\'t load Prism plugin "' + srcPath + '"; file not found');
+    return false;
+  }
+  return true;
 }

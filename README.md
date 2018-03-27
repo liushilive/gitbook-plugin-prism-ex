@@ -9,7 +9,7 @@ Rendering is performed at build time, NOT at runtime on the browser. This allows
 
 Prism plugins are also supported but, as rendering is done at build time, plugins that generate interactive elements will not work properly; they will render (even for PDFs), but no interactivity is supported.
 
-> **Technical note:** supporting Prism plugins on GitBook is not trivial, as they were designed for operation on the browser only, so a DOM representation of the document must be provided to them. This plugin provides such DOM trough an emulation that runs on NodeJS at build time, so that plugins operate as expected.  
+> **Technical note:** supporting Prism plugins on GitBook is not trivial, as they were designed for operation on the browser only, so a DOM representation of the document must be provided to them. This plugin provides such DOM trough an emulation that runs on NodeJS at build time, so that plugins operate as expected.
 
 ##### Before
 <img src='http://i.imgur.com/cbk6O52.png'>
@@ -30,15 +30,15 @@ Add the plugin to your `book.json`, and disable default GitBook code highlightin
 ## Options
 
 
-### `css`
-Override default styles.  All css files must reside in the same folder.
+### `theme`
+Override the default syntax highlighting styles.
+
+The CSS file path may be relative to the `node_modules` folder or to the book's source folder (if you want to provide a custom style that is bundled with the book's files instead of being provided by an installable module).
 
 ```json
 "pluginsConfig": {
   "prism": {
-    "css": [
-      "prismjs/themes/prism-solarizedlight.css"
-    ]
+    "theme": "prismjs/themes/prism-solarizedlight.css"
   }
 }
 ```
@@ -70,59 +70,72 @@ Due to other plugins using code block notion to denote other functionality, you 
 }
 ```
 
+### `cssClasses`
+Appends a space-separated list of CSS classes to each fenced code block (those whose PRE element has a CODE element as a direct child).
+
+This is meant to be used with some plugins that require a specific CSS class to be applied to the PRE element, in order for the plugin to be activated on that block.
+
+```json
+"pluginsConfig": {
+  "prism": {
+    "cssClasses": "line-numbers"
+  }
+}
+```
+
 ## Prism Plugins
 
-> **Note:** currently, you must also use the `custom-js-css` plugin to load the plugin's scripts and stylesheets. Soon, this plugin will support that feature natively.
+You may specify a list of Prism plugins on the `pluginsConfig.prism.plugin` configuration property on `book.json`.
 
-#### book.json example
+That property should be an array where each element may be either:
 
-In this example, we're loading the `line-numbers` plugin and a custom theme from the `prism-ASH` plugin.
+1. a string with the plugin name (ex: "line-numbers");
+2. an array of CSS and/or JS files; each file path may be relative to `node_modules` or to the book's source folder.
+
+#### The simplest case
+
+In this basic example, we're loading the `line-numbers` Prism plugin.
+
+###### booj.json
 
 ```json
 {
-  "plugins": [ "-highlight", "prism-ext", "prism-ASH", "custom-js-css" ],
+  "plugins": ["-highlight", "prism-ext"],
+
+  "pluginsConfig": {
+    "prism": {
+      "plugins": ["line-numbers"],
+      "cssClasses": "line-numbers"
+    }
+  }
+}
+```
+
+> Note: the `cssClasses` value is required by this specific Prism plugin.
+
+#### A more complex case
+
+In this example, we're loading:
+
+1. the `line-numbers` and `show-invisibles` Prism plugins,
+2. a custom syntax theme from the `prism-ASH` GitBook plugin,
+3. a custom Prism plugin embedded on the book itself, on the `src` folder, comprised of a CSS and a JS file.
+
+###### booj.json
+
+```json
+{
+  "plugins": ["-highlight", "prism-ext", "prism-ASH"],
 
     "pluginsConfig": {
     "prism": {
-      "css": [
-        "syntax-highlighting/assets/css/prism/prism-tomorrow-night-bright.css"
-      ],
-      "plugins": [
-        "prismjs/plugins/line-numbers/prism-line-numbers.js"
-      ],
-      "cssClasses": "line-numbers",
-      "langCaptions": true
-    },
-    "custom-js-css": {
-      "js": [],
-      "css": [
-        "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.css"
-      ]
+      "theme": "syntax-highlighting/assets/css/prism/prism-tomorrow-night-bright.css",
+      "plugins": ["line-numbers", "show-invisibles", ["src/my-plugin.css", "src/my-plugin.js"]],
+      "cssClasses": "line-numbers my-example-class"
     }
   }
 }
 ``` 
-
-##### Important rules
-
-1. `"custom-js-css"` must come **after** both the `"prism-ext"` and the theme plugin, otherwise CSS styles from the
-theme will override styles of the Prism plugins.
-2. Put the URL of each plugin's stylesheet on the `custom-js-css.css` array.
-3. Put the URL of each plugin's javascript on the `prism.plugins` array.
-4. Put the  URL of the Prism theme's stylesheet on the `prism.css` array (only one stylesheet, please).
-5. Set `prism.cssClasses` to a space delimited list of class names that should be appended to the class of each code block's `pre` element.
-
-> Some plugins require a specific class on that element to enable its functionality. You must specify that class on `prism.cssClasses`, as the Prism plugin is currently unable to do it automatically.<br>
-> For instance, on the example above, the`line-numbers` plugin requires the `line-numbers` class.
-
-#### The `langCaptions` pseudo-plugin
-
-The Prism plugin provides an additional feature that displays the language name of each code block on its upper right
-corner.
-
-Set `pluginsConfig.langCaptions` to `true` on `book.json` to enable it.
-
-Add the `dark` CSS class to `prism.cssClasses` if you're using a dark theme.
 
 ## Prism Themes
 
