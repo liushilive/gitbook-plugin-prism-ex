@@ -96,7 +96,7 @@ That property should be an array where each element may be either:
 
 In this basic example, we're loading the `line-numbers` Prism plugin.
 
-###### booj.json
+###### book.json
 
 ```json
 {
@@ -121,7 +121,7 @@ In this example, we're loading:
 2. a custom syntax theme from the `prism-ASH` GitBook plugin,
 3. a custom Prism plugin embedded on the book itself, on the `src` folder, comprised of a CSS and a JS file.
 
-###### booj.json
+###### book.json
 
 ```json
 {
