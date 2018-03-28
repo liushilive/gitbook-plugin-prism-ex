@@ -147,9 +147,12 @@ module.exports = {
         // Custom plugin
         var files;
         if (typeof plugin === 'string') {
-          files = PLUGIN_ASSETS[plugin].map (function (file) {
-            return 'prismjs/plugins/' + plugin + '/' + file;
-          });
+          files = PLUGIN_ASSETS[plugin];
+          if (files) {
+            files = files.map(function (file) {
+              return 'prismjs/plugins/' + plugin + '/' + file;
+            });
+          }
           if (files === undefined) {
             warn('plugin "' + plugin + '" not found');
             return;
@@ -158,7 +161,7 @@ module.exports = {
           files = plugin;
           plugin = path.basename(files[0]);
         } else {
-          warn('invalid  "pluginsConfig.prism.plugins" setting');
+          warn('invalid "pluginsConfig.prism.plugins" setting');
           return;
         }
 
