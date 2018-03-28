@@ -147,7 +147,7 @@ module.exports = {
         // Custom plugin
         var files;
         if (typeof plugin === 'string') {
-          files = PLUGIN_ASSETS[plugin].map (function (file) {
+          files = PLUGIN_ASSETS[plugin].map(function (file) {
             return 'prismjs/plugins/' + plugin + '/' + file;
           });
           if (files === undefined) {
@@ -162,11 +162,11 @@ module.exports = {
           return;
         }
 
-        info('loading Prism plugin', '"' + plugin + '"...');
         for (var i = 0; i < files.length; ++i) {
           /** @type {string} */
           var file = files[i];
           if (file.match(/.js$/i)) {
+            info('loading Prism plugin', '"' + path.basename(file) + '"...');
             loadPlugin(file, book);
           } else if (file.match(/.css$/i)) {
             publishAssetFile(file, book);
@@ -178,9 +178,9 @@ module.exports = {
 
       });
 
-      if (!isEbook(book)) {
-        return;
-      }
+      info('Highlighting code blocks...');
+
+      if (!isEbook(book)) return;
 
       // Publish assets for PDF rendering.
 
