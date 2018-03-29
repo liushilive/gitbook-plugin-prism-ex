@@ -46,6 +46,8 @@ const PLUGIN_ASSETS = {
 };
 var blocks;
 var assets;
+var accTime;
+var pageCount;
 
 // Base languages syntaxes (as of prism@1.6.0), extended by other syntaxes.
 // They need to be required before the others.
@@ -135,6 +137,7 @@ module.exports = {
     //
     // @Inspiration https://github.com/GitbookIO/plugin-styles-less/blob/master/index.js#L8
     init: function () {
+      accTime = pageCount = 0;
       var book = this;
       assets = [];
 
@@ -181,8 +184,6 @@ module.exports = {
 
       });
 
-      info('Highlighting code blocks...');
-
       if (!isEbook(book)) return;
 
       // Publish assets for PDF rendering.
@@ -191,6 +192,7 @@ module.exports = {
     },
 
     page: function (page) {
+      var startTime = process.hrtime();
       blocks = {};
       var doc = JSDOM(page.content);
       var book = this;
@@ -226,7 +228,14 @@ module.exports = {
         page.content = toHTML(doc);
       }
 
+      accTime += process.hrtime(startTime)[1];
+      ++pageCount;
+
       return page;
+    },
+
+    'finish:before': function () {
+      info('highlighting', pageCount ,'pages took', (accTime / 1000000000.0).toFixed(1), 'seconds');
     }
   },
 
