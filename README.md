@@ -1,7 +1,7 @@
 GitBook plugin for [Prism](http://prismjs.com/) with support for Prism plugins
 ==============
 
-[![NPM](http://img.shields.io/npm/v/gitbook-plugin-prism-ext.svg?style=flat-square&label=npm)](https://www.npmjs.com/package/gitbook-plugin-prism-ext)
+[![NPM](http://img.shields.io/npm/v/gitbook-plugin-prism-ex.svg?style=flat-square&label=npm)](https://www.npmjs.com/package/gitbook-plugin-prism-ex)
 
 This plugin hilights the syntax of code blocks using the Prism highlighter.
 
@@ -25,7 +25,7 @@ Add the plugin to your `book.json`, and disable default GitBook code highlightin
 
 ```json
 {
-  "plugins": ["prism-ext", "-highlight"]
+  "plugins": ["prism-ex", "-highlight"]
 }
 ```
 
@@ -102,7 +102,7 @@ In this basic example, we're loading the `line-numbers` Prism plugin.
 
 ```json
 {
-  "plugins": ["-highlight", "prism-ext"],
+  "plugins": ["-highlight", "prism-ex"],
 
   "pluginsConfig": {
     "prism": {
@@ -127,7 +127,7 @@ In this example, we're loading:
 
 ```json
 {
-  "plugins": ["-highlight", "prism-ext", "prism-ASH"],
+  "plugins": ["-highlight", "prism-ex", "prism-ASH"],
 
     "pluginsConfig": {
     "prism": {

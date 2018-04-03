@@ -14,6 +14,7 @@ const MAP_LANGUAGES = {
   'rb': 'ruby',
   'cs': 'csharp',
   'sh': 'bash',
+  'pl': 'plsql',
   'html': 'markup'
 };
 const PLUGIN_ASSETS = {
