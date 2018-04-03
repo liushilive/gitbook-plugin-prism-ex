@@ -10,6 +10,8 @@ Rendering is performed at build time, NOT at runtime on the browser. This allows
 Prism plugins are also supported but, as rendering is done at build time, plugins that generate interactive elements will not work properly; they will render (even for PDFs), but no interactivity is supported.
 
 > **Technical note:** supporting Prism plugins on GitBook is not trivial, as they were designed for operation on the browser only, so a DOM representation of the document must be provided to them. This plugin provides such DOM trough an emulation that runs on NodeJS at build time, so that plugins operate as expected.
+>
+>修改支持最新prismjs，支持PLSQL等语言。
 
 ##### Before
 <img src='http://i.imgur.com/cbk6O52.png'>
@@ -135,7 +137,7 @@ In this example, we're loading:
     }
   }
 }
-``` 
+```
 
 ## Prism Themes
 
